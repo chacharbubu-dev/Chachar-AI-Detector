@@ -112,26 +112,26 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script type="text/javascript">
-        
-        // 🛑 สเต็ปนี้สำคัญมาก! เอาลิงก์แชร์สีฟ้าที่ก๊อปปี้มาจากตัวเลือก Teachable Machine มาวางแทนที่ด้านล่างนี้ได้เลยครับ!
-        // ตัวอย่างเช่น: const URL = "https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/";
+        // ลิงก์โมเดลจาก Teachable Machine ของคุณ
         const URL = "https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/";
 
         let model, webcam, labelContainer, maxPredictions;
         let isPredicting = false;
-        let useFacingMode = "user"; 
+        let useFacingMode = "user"; // "user" = กล้องหน้า, "environment" = กล้องหลัง
         let lastCapturedClass = ""; 
         let lastCaptureTime = 0;
 
+        // เรียกทำงานทันทีเมื่อเปิดเว็บ
         window.addEventListener('DOMContentLoaded', () => {
             createPetals();
             initAI();
             setupMouseTrail();
         });
 
+        // 🌸 ระบบโปรยกลีบดอกไม้ซากุระ
         function createPetals() {
             const container = document.getElementById('petal-container');
             const petalCount = 25; 
@@ -147,6 +147,7 @@
             }
         }
 
+        // ✨ ระบบ Mouse Trail วิ้งค์ๆ ยามขยับเมาส์
         function setupMouseTrail() {
             const symbols = ['✨', '💖', '⭐', '🎀'];
             window.addEventListener('mousemove', (e) => {
@@ -162,6 +163,7 @@
             });
         }
 
+        // 📷 โหลดโมเดลและเปิดกล้องแคมรอไว้เสมอ (แต่ยังไม่ Predict)
         async function initAI() {
             try {
                 await tf.setBackend('webgl');
@@ -173,11 +175,17 @@
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
 
+                // สั่งรันเปิดกล้องแคม
                 await setupWebcam();
+
+                // ซ่อนหน้าจอ Loading
                 document.getElementById("loading-status").classList.add("hidden");
                 
+                // สร้างกล่องแถบแสดงคะแนนความมั่นใจรอไว้
                 buildLabelUI();
                 renderHistory();
+
+                // 🛑 ตั้งค่าเริ่มต้นให้พร้อมทำงาน แต่กดเป็นสถานะ Stop/Paused ไว้ตั้งแต่เริ่มเว็บ
                 stopPredict();
 
             } catch (error) {
@@ -186,12 +194,15 @@
             }
         }
 
+        // ฟังก์ชัน Setup กล้องแคมที่รองรับการสลับหน้า-หลัง
         async function setupWebcam() {
             if (webcam && webcam.webcam) {
                 webcam.stop();
             }
+
             const flip = (useFacingMode === "user");
             webcam = new tmImage.Webcam(250, 250, flip);
+            
             await webcam.setup({ facingMode: useFacingMode }); 
             await webcam.play();
 
@@ -200,10 +211,13 @@
             container.appendChild(webcam.canvas);
         }
 
+        // 🔄 ฟังก์ชันสลับกล้องหน้า-หลัง (Flip Camera)
         async function flipCamera() {
             document.getElementById("loading-status").classList.remove("hidden");
             document.getElementById("status-text").innerText = "กำลังสลับกล้องแคม...";
+            
             useFacingMode = (useFacingMode === "user") ? "environment" : "user";
+            
             await setupWebcam();
             document.getElementById("loading-status").classList.add("hidden");
         }
@@ -227,6 +241,7 @@
             }
         }
 
+        // วนลูปวิดีโอแคมให้ทำงานตลอดเวลาไม่มีหยุด
         function webcamLoop() {
             if (webcam) {
                 webcam.update();
@@ -235,6 +250,7 @@
         }
         window.requestAnimationFrame(webcamLoop);
 
+        // ▶️ เริ่มรันทำนายผล AI
         function startPredict() {
             isPredicting = true;
             document.getElementById("btn-start").disabled = true;
@@ -242,12 +258,14 @@
             predictLoop();
         }
 
+        // ⏹️ หยุดรันทำนายผล AI (แต่ตัวภาพกล้องแคมยังขยับได้ปกติ)
         function stopPredict() {
             isPredicting = false;
             document.getElementById("btn-start").disabled = false;
             document.getElementById("btn-stop").disabled = true;
         }
 
+        // ลูปดักรอคำนวณผลลัพธ์
         async function predictLoop() {
             if (!isPredicting) return;
             await predict();
@@ -270,6 +288,7 @@
                 document.getElementById(`txt-score-${i}`).innerText = percentage + "%";
                 document.getElementById(`bar-score-${i}`).style.width = percentage + "%";
 
+                // เงื่อนไข Auto Capture เมื่อความมั่นใจเกิน 90%
                 if (probability > 0.90 && (className !== lastCapturedClass || now - lastCaptureTime > 4000)) {
                     triggerCapture(className, percentage);
                     lastCapturedClass = className;
@@ -303,12 +322,15 @@
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
+
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
+                
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.15);
             } catch (e) { }
