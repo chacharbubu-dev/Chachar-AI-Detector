@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌸 Chachar AI Detector 🧸</title>
+    <title>🌸 Sweet AI Detector 🧸</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,7 +34,7 @@
             90% { opacity: 0.8; }
             100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
         }
-        /* เมาส์เอฟเฟกต์วิ้งค์ๆ ตัวแม่ */
+        /* เมาส์เอฟเฟกต์วิ้งค์ๆ */
         .sparkle {
             position: absolute;
             pointer-events: none;
@@ -59,7 +59,7 @@
             <div class="text-center relative">
                 <span class="absolute -top-4 -left-2 text-3xl">🧸</span>
                 <span class="absolute -top-4 -right-2 text-3xl">🎀</span>
-                <h1 class="text-2xl font-bold text-pink-600 tracking-wide">Chachar AI Detector</h1>
+                <h1 class="text-2xl font-bold text-pink-600 tracking-wide">🌸 Sweet AI Detector 🌸</h1>
                 <p class="text-xs text-pink-400 mt-1">กล้องสแตนด์บายอัตโนมัติ กดปุ่มด้านล่างเพื่อเริ่มทำนายผล</p>
             </div>
 
@@ -74,10 +74,10 @@
             <div class="flex flex-col gap-2">
                 <div class="grid grid-cols-2 gap-3">
                     <button id="btn-start" onclick="startPredict()" class="cursor-pointer bg-emerald-400 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50">
-                        ▶️ Start Predict
+                        ▶️ Start
                     </button>
                     <button id="btn-stop" onclick="stopPredict()" class="cursor-pointer bg-rose-400 hover:bg-rose-500 text-white font-medium py-2.5 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50">
-                        ⏹️ Stop Predict
+                        ⏹️ Stop
                     </button>
                 </div>
                 <button id="btn-flip" onclick="flipCamera()" class="cursor-pointer bg-blue-400 hover:bg-blue-500 text-white font-medium py-2 rounded-xl transition-all shadow-md active:scale-95 text-sm flex items-center justify-center gap-1">
@@ -85,15 +85,14 @@
                 </button>
             </div>
 
-            <div class="bg-pink-50/40 p-4 rounded-xl border border-pink-100 space-y-3" id="label-container">
-                <div class="text-center text-xs text-pink-300 py-2">รอการเปิดใช้งานสแกน...</div>
-            </div>
+            <div class="bg-pink-50/40 p-4 rounded-2xl border border-pink-100/70" id="label-container">
+                </div>
         </div>
 
         <div class="lg:col-span-7 bg-white/90 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-pink-100 h-full flex flex-col min-h-[500px]">
             <div class="flex justify-between items-center border-b border-pink-100 pb-3 mb-4">
                 <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
-                    <span>📸</span> ประวัติการตรวจจับวัตถุ (>90%)
+                    <span>📷</span> Detection History (>90%)
                 </h2>
                 <button onclick="clearHistory()" class="cursor-pointer text-xs text-rose-400 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors">
                     ล้างประวัติทั้งหมด
@@ -108,30 +107,28 @@
     </div>
 
     <footer class="text-center text-xs text-pink-400/70 mt-6 z-10">
-        🎀 Chachar AI Showcase &copy; 2026 • Optimized for Mobile & iPad
+        🎀 Sweet AI Showcase &copy; 2026 • Optimized for Mobile & iPad
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script type="text/javascript">
-        // ลิงก์โมเดลจาก Teachable Machine ของคุณ
         const URL = "https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/";
 
         let model, webcam, labelContainer, maxPredictions;
         let isPredicting = false;
-        let useFacingMode = "user"; // "user" = กล้องหน้า, "environment" = กล้องหลัง
+        let useFacingMode = "user"; 
         let lastCapturedClass = ""; 
         let lastCaptureTime = 0;
+        let classListNames = []; // ตัวแปรเก็บรายชื่อวัตถุทั้งหมด
 
-        // เรียกทำงานทันทีเมื่อเปิดเว็บ
         window.addEventListener('DOMContentLoaded', () => {
             createPetals();
             initAI();
             setupMouseTrail();
         });
 
-        // 🌸 ระบบโปรยกลีบดอกไม้ซากุระ
         function createPetals() {
             const container = document.getElementById('petal-container');
             const petalCount = 25; 
@@ -147,7 +144,6 @@
             }
         }
 
-        // ✨ ระบบ Mouse Trail วิ้งค์ๆ ยามขยับเมาส์
         function setupMouseTrail() {
             const symbols = ['✨', '💖', '⭐', '🎀'];
             window.addEventListener('mousemove', (e) => {
@@ -163,10 +159,8 @@
             });
         }
 
-        // 📷 โหลดโมเดลและเปิดกล้องแคมรอไว้เสมอ (แต่ยังไม่ Predict)
         async function initAI() {
             try {
-                await tf.setBackend('webgl');
                 await tf.ready();
 
                 const modelURL = URL + "model.json";
@@ -174,18 +168,15 @@
 
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
+                
+                // ดึงรายชื่อวัตถุทั้งหมดมาเก็บไว้ใน Array
+                classListNames = model.getClassLabels();
 
-                // สั่งรันเปิดกล้องแคม
                 await setupWebcam();
-
-                // ซ่อนหน้าจอ Loading
                 document.getElementById("loading-status").classList.add("hidden");
                 
-                // สร้างกล่องแถบแสดงคะแนนความมั่นใจรอไว้
                 buildLabelUI();
                 renderHistory();
-
-                // 🛑 ตั้งค่าเริ่มต้นให้พร้อมทำงาน แต่กดเป็นสถานะ Stop/Paused ไว้ตั้งแต่เริ่มเว็บ
                 stopPredict();
 
             } catch (error) {
@@ -194,15 +185,12 @@
             }
         }
 
-        // ฟังก์ชัน Setup กล้องแคมที่รองรับการสลับหน้า-หลัง
         async function setupWebcam() {
             if (webcam && webcam.webcam) {
                 webcam.stop();
             }
-
             const flip = (useFacingMode === "user");
             webcam = new tmImage.Webcam(250, 250, flip);
-            
             await webcam.setup({ facingMode: useFacingMode }); 
             await webcam.play();
 
@@ -211,37 +199,38 @@
             container.appendChild(webcam.canvas);
         }
 
-        // 🔄 ฟังก์ชันสลับกล้องหน้า-หลัง (Flip Camera)
         async function flipCamera() {
             document.getElementById("loading-status").classList.remove("hidden");
             document.getElementById("status-text").innerText = "กำลังสลับกล้องแคม...";
-            
             useFacingMode = (useFacingMode === "user") ? "environment" : "user";
-            
             await setupWebcam();
             document.getElementById("loading-status").classList.add("hidden");
         }
 
+        // 🎨 ปรับปรุง UI เริ่มต้น: แสดงเฉพาะรายการสิ่งที่โมเดลนี้ตรวจจับได้แบบคลีนๆ
         function buildLabelUI() {
             labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = "";
-            for (let i = 0; i < maxPredictions; i++) {
-                const row = document.createElement("div");
-                row.className = "flex flex-col gap-1";
-                row.innerHTML = `
-                    <div class="flex justify-between text-xs font-semibold text-slate-600">
-                        <span id="txt-class-${i}">รอกดเริ่มทำงาน...</span>
-                        <span id="txt-score-${i}" class="text-pink-500">0%</span>
+            
+            // สร้าง Badge รายชื่อวัตถุทั้งหมดขึ้นมาโชว์นำทางก่อน
+            let itemsBadgeHTML = classListNames.map(name => 
+                `<span class="bg-white/80 border border-pink-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium capitalize shadow-2xs">🍭 ${name}</span>`
+            ).join('');
+
+            labelContainer.innerHTML = `
+                <div id="default-info-view" class="flex flex-col gap-3 py-2">
+                    <div class="text-xs font-bold text-pink-500 flex items-center gap-1 px-1">
+                        ✨ วัตถุที่ระบบสามารถสแกนได้ (${maxPredictions} ชิ้น):
                     </div>
-                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div id="bar-score-${i}" class="bg-pink-400 h-full w-0 transition-all duration-700"></div>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        ${itemsBadgeHTML}
                     </div>
-                `;
-                labelContainer.appendChild(row);
-            }
+                    <div class="text-[11px] text-slate-400 text-center mt-1 animate-pulse">
+                        นำวัตถุข้างต้นมาส่องหน้ากล้องเพื่อสแกนผลได้เลย...
+                    </div>
+                </div>
+            `;
         }
 
-        // วนลูปวิดีโอแคมให้ทำงานตลอดเวลาไม่มีหยุด
         function webcamLoop() {
             if (webcam) {
                 webcam.update();
@@ -250,7 +239,6 @@
         }
         window.requestAnimationFrame(webcamLoop);
 
-        // ▶️ เริ่มรันทำนายผล AI
         function startPredict() {
             isPredicting = true;
             document.getElementById("btn-start").disabled = true;
@@ -258,14 +246,13 @@
             predictLoop();
         }
 
-        // ⏹️ หยุดรันทำนายผล AI (แต่ตัวภาพกล้องแคมยังขยับได้ปกติ)
         function stopPredict() {
             isPredicting = false;
             document.getElementById("btn-start").disabled = false;
             document.getElementById("btn-stop").disabled = true;
+            buildLabelUI(); // พอกดหยุด ให้เด้งกลับไปหน้าบอกรายชื่อวัตถุเหมือนเดิม
         }
 
-        // ลูปดักรอคำนวณผลลัพธ์
         async function predictLoop() {
             if (!isPredicting) return;
             await predict();
@@ -274,26 +261,52 @@
             }, 100); 
         }
 
+        // 🧠 ฟังก์ชันทำนายผลอัจฉริยะ: ค้นหาตัวที่ความแม่นยำสูงสุดตัวเดียวเพื่อเฉลยบนหน้าจอ
         async function predict() {
             if (!webcam || !model) return;
             const prediction = await model.predict(webcam.canvas);
             const now = Date.now();
 
+            // หาคลาสที่มีค่าคะแนนสูงสุด ณ วินาทีนั้นๆ
+            let highestPred = { className: "", probability: 0 };
             for (let i = 0; i < maxPredictions; i++) {
-                const className = prediction[i].className;
-                const probability = prediction[i].probability;
-                const percentage = (probability * 100).toFixed(0);
+                if (prediction[i].probability > highestPred.probability) {
+                    highestPred = prediction[i];
+                }
+            }
 
-                document.getElementById(`txt-class-${i}`).innerText = className;
-                document.getElementById(`txt-score-${i}`).innerText = percentage + "%";
-                document.getElementById(`bar-score-${i}`).style.width = percentage + "%";
+            const currentPercentage = (highestPred.probability * 100).toFixed(0);
 
-                // เงื่อนไข Auto Capture เมื่อความมั่นใจเกิน 90%
-                if (probability > 0.90 && (className !== lastCapturedClass || now - lastCaptureTime > 4000)) {
-                    triggerCapture(className, percentage);
-                    lastCapturedClass = className;
+            // ถ้าเจอวัตถุชิ้นใดชิ้นหนึ่ง และมีความมั่นใจสูงกว่า 85% ให้สลับมาหน้าจอเฉลยวอยซ์เดียวเดี่ยวๆ เลย!
+            if (highestPred.probability > 0.85) {
+                labelContainer.innerHTML = `
+                    <div class="bg-gradient-to-br from-white to-pink-50/30 p-4 rounded-xl border border-pink-200 shadow-md flex flex-col gap-3 animate-fade-in">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-bold text-pink-600 flex items-center gap-1.5">
+                                <span class="animate-bounce text-base">🎉</span> ตรวจพบวัตถุ!
+                            </span>
+                            <span class="text-xs bg-pink-100 text-pink-600 font-bold px-2.5 py-0.5 rounded-full border border-pink-200">
+                                Confidence: ${currentPercentage}%
+                            </span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-800 text-center tracking-wide py-1 border-b border-pink-100/50 capitalize">
+                            ✨ ${highestPred.className} ✨
+                        </div>
+                        <div class="w-full bg-pink-100/40 h-2.5 rounded-full overflow-hidden border border-pink-100/30 shadow-inner">
+                            <div class="bg-gradient-to-r from-emerald-400 to-pink-500 h-full rounded-full shadow-md transition-all duration-200" style="width: ${currentPercentage}%"></div>
+                        </div>
+                    </div>
+                `;
+
+                // บันทึกประวัติลงระบบฝั่งขวาเมื่อความมั่นใจทะลุ 90% ตามเงื่อนไขเดิม
+                if (highestPred.probability > 0.90 && (highestPred.className !== lastCapturedClass || now - lastCaptureTime > 4000)) {
+                    triggerCapture(highestPred.className, currentPercentage);
+                    lastCapturedClass = highestPred.className;
                     lastCaptureTime = now;
                 }
+            } else {
+                // ถ้าสแกนแล้วไม่ชัดเจน หรือไม่เจออะไรเลย ให้แสดงรายการไกด์นำทางตามปกติ
+                buildLabelUI();
             }
         }
 
@@ -322,15 +335,12 @@
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
-
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-                
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.15);
             } catch (e) { }
@@ -357,7 +367,7 @@
                     <img src="${item.image}" class="w-16 h-16 object-cover rounded-xl border-2 border-white shadow-sm flex-shrink-0" />
                     <div class="flex-1 text-left">
                         <div class="font-bold text-slate-700 text-base capitalize">✨ ${item.className}</div>
-                        <div class="text-xs text-slate-400 mt-0.5">เวลาตรวจเจอ: ${item.time} น.</div>
+                        <div class="text-xs text-slate-400 mt-0.5">${item.time}</div>
                     </div>
                     <div class="text-right">
                         <span class="bg-emerald-100 text-emerald-600 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200">
