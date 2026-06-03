@@ -15,7 +15,6 @@
             background-color: #ffeef2;
             overflow-x: hidden;
         }
-        /* CSS สำหรับกลีบดอกไม้ร่วง */
         .cherry-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -34,7 +33,6 @@
             90% { opacity: 0.8; }
             100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
         }
-        /* เมาส์เอฟเฟกต์วิ้งค์ๆ */
         .sparkle {
             position: absolute;
             pointer-events: none;
@@ -85,8 +83,7 @@
                 </button>
             </div>
 
-            <div class="bg-pink-50/40 p-4 rounded-2xl border border-pink-100/70" id="label-container">
-                </div>
+            <div class="bg-pink-50/40 p-4 rounded-2xl border border-pink-100/70" id="label-container"></div>
         </div>
 
         <div class="lg:col-span-7 bg-white/90 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-pink-100 h-full flex flex-col min-h-[500px]">
@@ -114,6 +111,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script type="text/javascript">
+        // ลิงก์โมเดลอัปเดตตามที่คุณแจ้งเรียบร้อยครับ
         const URL = "https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/";
 
         let model, webcam, labelContainer, maxPredictions;
@@ -123,7 +121,6 @@
         let lastCaptureTime = 0;
         let classListNames = []; 
 
-        // ระบบตัวกรองเพื่อป้องกันหน้าจอเฉลยกระตุกแวบไปแวบมา
         let activeDetectedClass = ""; 
         let consecFramesNotDetected = 0; 
 
@@ -135,13 +132,13 @@
 
         function createPetals() {
             const container = document.getElementById('petal-container');
-            const petalCount = 25; 
+            const petalCount = 15; // ปรับลดจำนวนกลีบลงเล็กน้อยเพื่อประหยัด RAM บนมือถือ
             for (let i = 0; i < petalCount; i++) {
                 const petal = document.createElement('div');
                 petal.className = 'petal';
                 petal.style.left = Math.random() * 100 + 'vw';
-                petal.style.width = Math.random() * 12 + 8 + 'px';
-                petal.style.height = Math.random() * 12 + 8 + 'px';
+                petal.style.width = Math.random() * 10 + 8 + 'px';
+                petal.style.height = Math.random() * 10 + 8 + 'px';
                 petal.style.animationDuration = Math.random() * 5 + 5 + 's';
                 petal.style.animationDelay = Math.random() * 5 + 's';
                 container.appendChild(petal);
@@ -151,7 +148,7 @@
         function setupMouseTrail() {
             const symbols = ['✨', '💖', '⭐', '🎀'];
             window.addEventListener('mousemove', (e) => {
-                if (Math.random() > 0.15) return; 
+                if (Math.random() > 0.3) return; // เพิ่มอัตราการข้ามเพื่อลดภาระ CPU ของการเคลื่อนเมาส์
                 const sparkle = document.createElement('div');
                 sparkle.className = 'sparkle';
                 sparkle.innerText = symbols[Math.floor(Math.random() * symbols.length)];
@@ -159,12 +156,14 @@
                 sparkle.style.top = e.pageY + 'px';
                 document.body.appendChild(sparkle);
                 
-                setTimeout(() => sparkle.remove(), 800);
+                setTimeout(() => sparkle.remove(), 600);
             });
         }
 
         async function initAI() {
             try {
+                // บังคับสลับโหมดประมวลผลเป็น WebGL เพื่อดึงพลังการ์ดจอมาใช้ (เปิดหน้าเว็บเร็วขึ้น)
+                await tf.setBackend('webgl');
                 await tf.ready();
 
                 const modelURL = URL + "model.json";
@@ -172,10 +171,15 @@
 
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
-                
                 classListNames = model.getClassLabels();
 
                 await setupWebcam();
+                
+                // Warm-up Model เพื่อเตรียมระบบตรวจจับล่วงหน้า ลดความล่าช้า (Lag) ตอนเฟรมแรก
+                if(webcam && webcam.canvas) {
+                    await model.predict(webcam.canvas);
+                }
+
                 document.getElementById("loading-status").classList.add("hidden");
                 
                 buildLabelUI();
@@ -184,7 +188,20 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById("status-text").innerText = "เกิดข้อผิดพลาดในการโหลดโมเดลหรือสิทธิ์เข้าถึงกล้อง";
+                // สลับไปใช้ CPU สำรองอัตโนมัติหากอุปกรณ์รุ่นเก่าไม่รองรับ WebGL
+                try {
+                    await tf.setBackend('cpu');
+                    model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+                    maxPredictions = model.getTotalClasses();
+                    classListNames = model.getClassLabels();
+                    await setupWebcam();
+                    document.getElementById("loading-status").classList.add("hidden");
+                    buildLabelUI();
+                    renderHistory();
+                    stopPredict();
+                } catch(e) {
+                    document.getElementById("status-text").innerText = "เกิดข้อผิดพลาดในการโหลดระบบหรือสิทธิ์เข้าถึงกล้อง";
+                }
             }
         }
 
@@ -193,7 +210,8 @@
                 webcam.stop();
             }
             const flip = (useFacingMode === "user");
-            webcam = new tmImage.Webcam(250, 250, flip);
+            // จำกัดขนาดกล้องให้สอดคล้องกับขนาดโครงข่ายประสาทเทียมเพื่อประหยัดแรงเครื่อง
+            webcam = new tmImage.Webcam(224, 224, flip);
             await webcam.setup({ facingMode: useFacingMode }); 
             await webcam.play();
 
@@ -210,7 +228,6 @@
             document.getElementById("loading-status").classList.add("hidden");
         }
 
-        // หน้าจอ UI แสดงเฉพาะรายชื่อสิ่งที่สแกนได้ตอนที่กล้องยังว่างอยู่
         function buildLabelUI() {
             labelContainer = document.getElementById("label-container");
             
@@ -235,8 +252,8 @@
         }
 
         function webcamLoop() {
-            if (webcam) {
-                webcam.update();
+            if (webcam && isPredicting === false) {
+                webcam.update(); // อัปเดตเฟรมปกติเมื่อไม่ได้รันโหมดตรวจจับผล
             }
             window.requestAnimationFrame(webcamLoop);
         }
@@ -258,13 +275,19 @@
 
         async function predictLoop() {
             if (!isPredicting) return;
-            await predict();
+            
+            // ใช้ tf.tidy เพื่อเคลียร์หน่วยความจำแคชของภาพใน TensorFlow ออกทันที ป้องกันอาการเบราว์เซอร์ค้าง
+            await tf.tidy(async () => {
+                if (webcam) webcam.update();
+                await predict();
+            });
+
+            // เพิ่มดีเลย์เล็กน้อย (70ms) เพื่อป้องกันการหน่วงสะสมและไม่ให้เครื่องร้อนเร็วเกินไป
             setTimeout(() => {
                 window.requestAnimationFrame(predictLoop);
-            }, 100); 
+            }, 70); 
         }
 
-        // 🧠 ระบบประมวลผลล็อคผลลัพธ์ให้นิ่งขึ้น ไม่ให้กระตุกแวบไปแวบมา
         async function predict() {
             if (!webcam || !model) return;
             const prediction = await model.predict(webcam.canvas);
@@ -279,9 +302,8 @@
 
             const currentPercentage = (highestPred.probability * 100).toFixed(0);
 
-            // เกณฑ์ความแม่นยำในการยอมรับวัตถุ (> 85%)
             if (highestPred.probability > 0.85) {
-                consecFramesNotDetected = 0; // รีเซ็ตตัวนับเฟรมหลุด
+                consecFramesNotDetected = 0;
                 activeDetectedClass = highestPred.className;
 
                 labelContainer.innerHTML = `
@@ -298,21 +320,19 @@
                             ✨ ${highestPred.className} ✨
                         </div>
                         <div class="w-full bg-pink-100/40 h-2.5 rounded-full overflow-hidden border border-pink-100/30 shadow-inner">
-                            <div class="bg-gradient-to-r from-emerald-400 to-pink-500 h-full rounded-full shadow-md transition-all duration-300" style="width: ${currentPercentage}%"></div>
+                            <div class="bg-gradient-to-r from-emerald-400 to-pink-500 h-full rounded-full shadow-md transition-all duration-200" style="width: ${currentPercentage}%"></div>
                         </div>
                     </div>
                 `;
 
-                // บันทึกประวัติฝั่งขวาเมื่อชัวร์เกิน 90%
                 if (highestPred.probability > 0.90 && (highestPred.className !== lastCapturedClass || now - lastCaptureTime > 4000)) {
                     triggerCapture(highestPred.className, currentPercentage);
                     lastCapturedClass = highestPred.className;
                     lastCaptureTime = now;
                 }
             } else {
-                // หากเฟรมนั้นคะแนนหลุดต่ำกว่า 85% ให้หน่วงเวลาไว้ 5 เฟรมก่อน (เพื่อไม่ให้ UI กระตุกเด้งกลับทันที)
                 consecFramesNotDetected++;
-                if (consecFramesNotDetected > 5 || activeDetectedClass === "") {
+                if (consecFramesNotDetected > 4 || activeDetectedClass === "") {
                     buildLabelUI();
                 }
             }
@@ -320,7 +340,7 @@
 
         function triggerCapture(className, score) {
             playBeep();
-            const imageDataUrl = webcam.canvas.toDataURL('image/jpeg', 0.6);
+            const imageDataUrl = webcam.canvas.toDataURL('image/jpeg', 0.5); // บีบอัดขนาดไฟล์รูปภาพประวัติลงเล็กน้อยเพื่อประหยัดความเร็ว
             const timeString = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             const historyItem = {
@@ -345,12 +365,12 @@
                 const gainNode = audioCtx.createGain();
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.15);
+                oscillator.stop(audioCtx.currentTime + 0.1);
             } catch (e) { }
         }
 
