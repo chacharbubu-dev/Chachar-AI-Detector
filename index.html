@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌸 Sweet AI Detector 🧸</title>
+    <title>🌸 Chachar AI Detector 🧸</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,7 +59,7 @@
             <div class="text-center relative">
                 <span class="absolute -top-4 -left-2 text-3xl">🧸</span>
                 <span class="absolute -top-4 -right-2 text-3xl">🎀</span>
-                <h1 class="text-2xl font-bold text-pink-600 tracking-wide">🌸 Sweet AI Detector 🌸</h1>
+                <h1 class="text-2xl font-bold text-pink-600 tracking-wide">🌸 Chachar AI Detector 🌸</h1>
                 <p class="text-xs text-pink-400 mt-1">กล้องสแตนด์บายอัตโนมัติ กดปุ่มด้านล่างเพื่อเริ่มทำนายผล</p>
             </div>
 
@@ -107,7 +107,7 @@
     </div>
 
     <footer class="text-center text-xs text-pink-400/70 mt-6 z-10">
-        🎀 Sweet AI Showcase &copy; 2026 • Optimized for Mobile & iPad
+        🎀 Chachar AI Showcase &copy; 2026 • Optimized for Mobile & iPad
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -121,7 +121,11 @@
         let useFacingMode = "user"; 
         let lastCapturedClass = ""; 
         let lastCaptureTime = 0;
-        let classListNames = []; // ตัวแปรเก็บรายชื่อวัตถุทั้งหมด
+        let classListNames = []; 
+
+        // ระบบตัวกรองเพื่อป้องกันหน้าจอเฉลยกระตุกแวบไปแวบมา
+        let activeDetectedClass = ""; 
+        let consecFramesNotDetected = 0; 
 
         window.addEventListener('DOMContentLoaded', () => {
             createPetals();
@@ -169,7 +173,6 @@
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
                 
-                // ดึงรายชื่อวัตถุทั้งหมดมาเก็บไว้ใน Array
                 classListNames = model.getClassLabels();
 
                 await setupWebcam();
@@ -207,11 +210,10 @@
             document.getElementById("loading-status").classList.add("hidden");
         }
 
-        // 🎨 ปรับปรุง UI เริ่มต้น: แสดงเฉพาะรายการสิ่งที่โมเดลนี้ตรวจจับได้แบบคลีนๆ
+        // หน้าจอ UI แสดงเฉพาะรายชื่อสิ่งที่สแกนได้ตอนที่กล้องยังว่างอยู่
         function buildLabelUI() {
             labelContainer = document.getElementById("label-container");
             
-            // สร้าง Badge รายชื่อวัตถุทั้งหมดขึ้นมาโชว์นำทางก่อน
             let itemsBadgeHTML = classListNames.map(name => 
                 `<span class="bg-white/80 border border-pink-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium capitalize shadow-2xs">🍭 ${name}</span>`
             ).join('');
@@ -229,6 +231,7 @@
                     </div>
                 </div>
             `;
+            activeDetectedClass = "";
         }
 
         function webcamLoop() {
@@ -250,7 +253,7 @@
             isPredicting = false;
             document.getElementById("btn-start").disabled = false;
             document.getElementById("btn-stop").disabled = true;
-            buildLabelUI(); // พอกดหยุด ให้เด้งกลับไปหน้าบอกรายชื่อวัตถุเหมือนเดิม
+            buildLabelUI(); 
         }
 
         async function predictLoop() {
@@ -261,13 +264,12 @@
             }, 100); 
         }
 
-        // 🧠 ฟังก์ชันทำนายผลอัจฉริยะ: ค้นหาตัวที่ความแม่นยำสูงสุดตัวเดียวเพื่อเฉลยบนหน้าจอ
+        // 🧠 ระบบประมวลผลล็อคผลลัพธ์ให้นิ่งขึ้น ไม่ให้กระตุกแวบไปแวบมา
         async function predict() {
             if (!webcam || !model) return;
             const prediction = await model.predict(webcam.canvas);
             const now = Date.now();
 
-            // หาคลาสที่มีค่าคะแนนสูงสุด ณ วินาทีนั้นๆ
             let highestPred = { className: "", probability: 0 };
             for (let i = 0; i < maxPredictions; i++) {
                 if (prediction[i].probability > highestPred.probability) {
@@ -277,10 +279,13 @@
 
             const currentPercentage = (highestPred.probability * 100).toFixed(0);
 
-            // ถ้าเจอวัตถุชิ้นใดชิ้นหนึ่ง และมีความมั่นใจสูงกว่า 85% ให้สลับมาหน้าจอเฉลยวอยซ์เดียวเดี่ยวๆ เลย!
+            // เกณฑ์ความแม่นยำในการยอมรับวัตถุ (> 85%)
             if (highestPred.probability > 0.85) {
+                consecFramesNotDetected = 0; // รีเซ็ตตัวนับเฟรมหลุด
+                activeDetectedClass = highestPred.className;
+
                 labelContainer.innerHTML = `
-                    <div class="bg-gradient-to-br from-white to-pink-50/30 p-4 rounded-xl border border-pink-200 shadow-md flex flex-col gap-3 animate-fade-in">
+                    <div class="bg-gradient-to-br from-white to-pink-50/30 p-4 rounded-xl border border-pink-200 shadow-md flex flex-col gap-3">
                         <div class="flex justify-between items-center">
                             <span class="text-sm font-bold text-pink-600 flex items-center gap-1.5">
                                 <span class="animate-bounce text-base">🎉</span> ตรวจพบวัตถุ!
@@ -293,20 +298,23 @@
                             ✨ ${highestPred.className} ✨
                         </div>
                         <div class="w-full bg-pink-100/40 h-2.5 rounded-full overflow-hidden border border-pink-100/30 shadow-inner">
-                            <div class="bg-gradient-to-r from-emerald-400 to-pink-500 h-full rounded-full shadow-md transition-all duration-200" style="width: ${currentPercentage}%"></div>
+                            <div class="bg-gradient-to-r from-emerald-400 to-pink-500 h-full rounded-full shadow-md transition-all duration-300" style="width: ${currentPercentage}%"></div>
                         </div>
                     </div>
                 `;
 
-                // บันทึกประวัติลงระบบฝั่งขวาเมื่อความมั่นใจทะลุ 90% ตามเงื่อนไขเดิม
+                // บันทึกประวัติฝั่งขวาเมื่อชัวร์เกิน 90%
                 if (highestPred.probability > 0.90 && (highestPred.className !== lastCapturedClass || now - lastCaptureTime > 4000)) {
                     triggerCapture(highestPred.className, currentPercentage);
                     lastCapturedClass = highestPred.className;
                     lastCaptureTime = now;
                 }
             } else {
-                // ถ้าสแกนแล้วไม่ชัดเจน หรือไม่เจออะไรเลย ให้แสดงรายการไกด์นำทางตามปกติ
-                buildLabelUI();
+                // หากเฟรมนั้นคะแนนหลุดต่ำกว่า 85% ให้หน่วงเวลาไว้ 5 เฟรมก่อน (เพื่อไม่ให้ UI กระตุกเด้งกลับทันที)
+                consecFramesNotDetected++;
+                if (consecFramesNotDetected > 5 || activeDetectedClass === "") {
+                    buildLabelUI();
+                }
             }
         }
 
