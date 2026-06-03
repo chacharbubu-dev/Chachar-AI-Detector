@@ -111,7 +111,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script type="text/javascript">
-        // ลิงก์โมเดลอัปเดตตามที่คุณแจ้งเรียบร้อยครับ
+        // เปลี่ยนลิงก์เป็นโมเดลตัวใหม่ตามที่คุณระบุเรียบร้อยครับ
         const URL = "https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/";
 
         let model, webcam, labelContainer, maxPredictions;
@@ -132,7 +132,7 @@
 
         function createPetals() {
             const container = document.getElementById('petal-container');
-            const petalCount = 15; // ปรับลดจำนวนกลีบลงเล็กน้อยเพื่อประหยัด RAM บนมือถือ
+            const petalCount = 15; // ลดจำนวนกลีบลงเล็กน้อยเพื่อประหยัด RAM บนมือถือ/iPad
             for (let i = 0; i < petalCount; i++) {
                 const petal = document.createElement('div');
                 petal.className = 'petal';
@@ -148,7 +148,7 @@
         function setupMouseTrail() {
             const symbols = ['✨', '💖', '⭐', '🎀'];
             window.addEventListener('mousemove', (e) => {
-                if (Math.random() > 0.3) return; // เพิ่มอัตราการข้ามเพื่อลดภาระ CPU ของการเคลื่อนเมาส์
+                if (Math.random() > 0.3) return; // เพิ่มการข้ามเฟรมของเอฟเฟกต์เมาส์เพื่อลดภาระ CPU
                 const sparkle = document.createElement('div');
                 sparkle.className = 'sparkle';
                 sparkle.innerText = symbols[Math.floor(Math.random() * symbols.length)];
@@ -162,7 +162,7 @@
 
         async function initAI() {
             try {
-                // บังคับสลับโหมดประมวลผลเป็น WebGL เพื่อดึงพลังการ์ดจอมาใช้ (เปิดหน้าเว็บเร็วขึ้น)
+                // บังคับให้ใช้ WebGL เพื่อเร่งความเร็วในการเปิดโมเดลและการคำนวณผ่านการ์ดจอ
                 await tf.setBackend('webgl');
                 await tf.ready();
 
@@ -175,7 +175,7 @@
 
                 await setupWebcam();
                 
-                // Warm-up Model เพื่อเตรียมระบบตรวจจับล่วงหน้า ลดความล่าช้า (Lag) ตอนเฟรมแรก
+                // Warm-up Model รันข้อมูลเปล่าครั้งแรกก่อน เพื่อแก้ปัญหาเฟรมแรกกระตุกหรือค้างตอนเปิดกล้อง
                 if(webcam && webcam.canvas) {
                     await model.predict(webcam.canvas);
                 }
@@ -188,7 +188,7 @@
 
             } catch (error) {
                 console.error(error);
-                // สลับไปใช้ CPU สำรองอัตโนมัติหากอุปกรณ์รุ่นเก่าไม่รองรับ WebGL
+                // ระบบสำรอง: หากอุปกรณ์เก่าไม่รองรับ WebGL ให้สลับไปใช้ CPU อัตโนมัติ
                 try {
                     await tf.setBackend('cpu');
                     model = await tmImage.load(URL + "model.json", URL + "metadata.json");
@@ -210,7 +210,7 @@
                 webcam.stop();
             }
             const flip = (useFacingMode === "user");
-            // จำกัดขนาดกล้องให้สอดคล้องกับขนาดโครงข่ายประสาทเทียมเพื่อประหยัดแรงเครื่อง
+            // ล็อคขนาดกล้องตามมาตราฐานโมเดล Teachable Machine (224x224) เพื่อการประมวลผลที่เร็วที่สุด
             webcam = new tmImage.Webcam(224, 224, flip);
             await webcam.setup({ facingMode: useFacingMode }); 
             await webcam.play();
@@ -253,7 +253,7 @@
 
         function webcamLoop() {
             if (webcam && isPredicting === false) {
-                webcam.update(); // อัปเดตเฟรมปกติเมื่อไม่ได้รันโหมดตรวจจับผล
+                webcam.update(); 
             }
             window.requestAnimationFrame(webcamLoop);
         }
@@ -276,13 +276,13 @@
         async function predictLoop() {
             if (!isPredicting) return;
             
-            // ใช้ tf.tidy เพื่อเคลียร์หน่วยความจำแคชของภาพใน TensorFlow ออกทันที ป้องกันอาการเบราว์เซอร์ค้าง
+            // ใช้ tf.tidy() เข้ามาช่วยล้างขยะภาพในหน่วยความจำทันที ป้องกันเครื่องหน่วงและเบราว์เซอร์ค้าง
             await tf.tidy(async () => {
                 if (webcam) webcam.update();
                 await predict();
             });
 
-            // เพิ่มดีเลย์เล็กน้อย (70ms) เพื่อป้องกันการหน่วงสะสมและไม่ให้เครื่องร้อนเร็วเกินไป
+            // ใส่หน่วงเวลาเล็กน้อย (70ms) เพื่อให้ CPU ได้พัก ไม่ทำให้เกิดอาการค้างสะสมบน iPad และมือถือ
             setTimeout(() => {
                 window.requestAnimationFrame(predictLoop);
             }, 70); 
@@ -340,7 +340,7 @@
 
         function triggerCapture(className, score) {
             playBeep();
-            const imageDataUrl = webcam.canvas.toDataURL('image/jpeg', 0.5); // บีบอัดขนาดไฟล์รูปภาพประวัติลงเล็กน้อยเพื่อประหยัดความเร็ว
+            const imageDataUrl = webcam.canvas.toDataURL('image/jpeg', 0.5); // บีบอัดภาพเหลือ 50% เพื่อความรวดเร็วในการบันทึกลงเว็บ
             const timeString = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             const historyItem = {
