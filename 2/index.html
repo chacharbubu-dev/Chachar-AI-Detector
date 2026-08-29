@@ -111,7 +111,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script type="text/javascript">
-        // เปลี่ยนลิงก์เป็นโมเดลตัวใหม่ตามที่คุณระบุเรียบร้อยครับ
         const URL = "https://teachablemachine.withgoogle.com/models/9Ok3h-hIS/";
 
         let model, webcam, labelContainer, maxPredictions;
@@ -124,6 +123,11 @@
         let activeDetectedClass = ""; 
         let consecFramesNotDetected = 0; 
 
+        // [แก้กล้อง] กำหนดตัวแประยะเวลาเพื่อล็อกความเร็วไว้ที่ 30 FPS
+        let lastFrameTime = performance.now();
+        const targetFPS = 30;
+        const frameInterval = 1000 / targetFPS; 
+
         window.addEventListener('DOMContentLoaded', () => {
             createPetals();
             initAI();
@@ -132,7 +136,7 @@
 
         function createPetals() {
             const container = document.getElementById('petal-container');
-            const petalCount = 15; // ลดจำนวนกลีบลงเล็กน้อยเพื่อประหยัด RAM บนมือถือ/iPad
+            const petalCount = 15;
             for (let i = 0; i < petalCount; i++) {
                 const petal = document.createElement('div');
                 petal.className = 'petal';
@@ -148,7 +152,7 @@
         function setupMouseTrail() {
             const symbols = ['✨', '💖', '⭐', '🎀'];
             window.addEventListener('mousemove', (e) => {
-                if (Math.random() > 0.3) return; // เพิ่มการข้ามเฟรมของเอฟเฟกต์เมาส์เพื่อลดภาระ CPU
+                if (Math.random() > 0.3) return;
                 const sparkle = document.createElement('div');
                 sparkle.className = 'sparkle';
                 sparkle.innerText = symbols[Math.floor(Math.random() * symbols.length)];
@@ -162,20 +166,19 @@
 
         async function initAI() {
             try {
-                // บังคับให้ใช้ WebGL เพื่อเร่งความเร็วในการเปิดโมเดลและการคำนวณผ่านการ์ดจอ
                 await tf.setBackend('webgl');
                 await tf.ready();
 
-                const modelURL = URL + "model.json";
-                const metadataURL = URL + "metadata.json";
+                // [แก้กล้อง] โหลดโมเดลและตั้งค่ากล้องไปพร้อมกัน (Parallel) เพื่อเปิดกล้องได้เร็วขึ้น
+                const loadModelPromise = tmImage.load(URL + "model.json", URL + "metadata.json");
+                const setupWebcamPromise = setupWebcam();
 
-                model = await tmImage.load(modelURL, metadataURL);
+                const [loadedModel] = await Promise.all([loadModelPromise, setupWebcamPromise]);
+
+                model = loadedModel;
                 maxPredictions = model.getTotalClasses();
                 classListNames = model.getClassLabels();
 
-                await setupWebcam();
-                
-                // Warm-up Model รันข้อมูลเปล่าครั้งแรกก่อน เพื่อแก้ปัญหาเฟรมแรกกระตุกหรือค้างตอนเปิดกล้อง
                 if(webcam && webcam.canvas) {
                     await model.predict(webcam.canvas);
                 }
@@ -188,7 +191,6 @@
 
             } catch (error) {
                 console.error(error);
-                // ระบบสำรอง: หากอุปกรณ์เก่าไม่รองรับ WebGL ให้สลับไปใช้ CPU อัตโนมัติ
                 try {
                     await tf.setBackend('cpu');
                     model = await tmImage.load(URL + "model.json", URL + "metadata.json");
@@ -205,19 +207,37 @@
             }
         }
 
+        // [แก้กล้อง] เพิ่มการส่ง Constraints เพื่อบังคับระดับ Hardware ของกล้องให้ทำงานที่ 30 FPS
         async function setupWebcam() {
             if (webcam && webcam.webcam) {
                 webcam.stop();
             }
             const flip = (useFacingMode === "user");
-            // ล็อคขนาดกล้องตามมาตราฐานโมเดล Teachable Machine (224x224) เพื่อการประมวลผลที่เร็วที่สุด
             webcam = new tmImage.Webcam(224, 224, flip);
-            await webcam.setup({ facingMode: useFacingMode }); 
-            await webcam.play();
 
-            const container = document.getElementById("webcam-container");
-            container.innerHTML = "";
-            container.appendChild(webcam.canvas);
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: useFacingMode,
+                        width: { ideal: 224 },
+                        height: { ideal: 224 },
+                        frameRate: { ideal: 30, max: 30 }
+                    }
+                };
+                await webcam.setup(constraints.video);
+                await webcam.play();
+
+                const container = document.getElementById("webcam-container");
+                container.innerHTML = "";
+                container.appendChild(webcam.canvas);
+            } catch (e) {
+                await webcam.setup({ facingMode: useFacingMode });
+                await webcam.play();
+
+                const container = document.getElementById("webcam-container");
+                container.innerHTML = "";
+                container.appendChild(webcam.canvas);
+            }
         }
 
         async function flipCamera() {
@@ -251,19 +271,13 @@
             activeDetectedClass = "";
         }
 
-        function webcamLoop() {
-            if (webcam && isPredicting === false) {
-                webcam.update(); 
-            }
-            window.requestAnimationFrame(webcamLoop);
-        }
-        window.requestAnimationFrame(webcamLoop);
-
+        // [แก้กล้อง] ถอด webcamLoop แยกออก และให้รันกล้องต่อเนื่องผ่าน predictLoop
         function startPredict() {
             isPredicting = true;
             document.getElementById("btn-start").disabled = true;
             document.getElementById("btn-stop").disabled = false;
-            predictLoop();
+            lastFrameTime = performance.now();
+            requestAnimationFrame(predictLoop);
         }
 
         function stopPredict() {
@@ -273,19 +287,24 @@
             buildLabelUI(); 
         }
 
-        async function predictLoop() {
+        // [แก้กล้อง] คำนวณช่วงเวลาการส่งเฟรมภาพ เพื่อให้การแสดงผลกล้องและการประมวลผลล็อกที่ 30 FPS พอดี ไม่กระตุกหรือค้าง
+        async function predictLoop(nowTime) {
             if (!isPredicting) return;
-            
-            // ใช้ tf.tidy() เข้ามาช่วยล้างขยะภาพในหน่วยความจำทันที ป้องกันเครื่องหน่วงและเบราว์เซอร์ค้าง
-            await tf.tidy(async () => {
-                if (webcam) webcam.update();
-                await predict();
-            });
 
-            // ใส่หน่วงเวลาเล็กน้อย (70ms) เพื่อให้ CPU ได้พัก ไม่ทำให้เกิดอาการค้างสะสมบน iPad และมือถือ
-            setTimeout(() => {
-                window.requestAnimationFrame(predictLoop);
-            }, 70); 
+            const delta = nowTime - lastFrameTime;
+
+            if (delta >= frameInterval) {
+                lastFrameTime = nowTime - (delta % frameInterval);
+
+                if (webcam) {
+                    webcam.update();
+                    tf.tidy(() => {
+                        predict();
+                    });
+                }
+            }
+
+            requestAnimationFrame(predictLoop);
         }
 
         async function predict() {
@@ -340,7 +359,7 @@
 
         function triggerCapture(className, score) {
             playBeep();
-            const imageDataUrl = webcam.canvas.toDataURL('image/jpeg', 0.5); // บีบอัดภาพเหลือ 50% เพื่อความรวดเร็วในการบันทึกลงเว็บ
+            const imageDataUrl = webcam.canvas.toDataURL('image/jpeg', 0.5);
             const timeString = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             const historyItem = {
